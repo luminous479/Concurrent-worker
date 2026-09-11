@@ -6,42 +6,48 @@ import (
 	"time"
 )
 
-
-func worker(workerId int, job Job, wg *sync.WaitGroup) {
-
-	defer wg.Done()
-
-	fmt.Printf("worker %d progressing Job %d\n",workerId, job.JobId )
-
-     time.Sleep(time.Second)
-
-    fmt.Printf("worker %d finished Job %d\n",workerId, job.JobId )
+type Job struct {
+	JobId int
 }
 
-type Job struct{
-	JobId int 
+func worker(workerId int, jobs <-chan Job, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for job := range jobs {
+		fmt.Printf("Worker %d processing Job %d\n", workerId, job.JobId)
+
+		time.Sleep(time.Second)
+
+		fmt.Printf("Worker %d finished Job %d\n", workerId, job.JobId)
+	}
 }
 
 func main() {
 
- var wg sync.WaitGroup
+	var wg sync.WaitGroup
 
-  jobs := []Job {
+	jobs := make(chan Job)
 
-	Job{JobId: 1},
-	Job{JobId: 2},
-	Job{JobId: 3},
-	Job{JobId: 4},
-	Job{JobId: 5},
+	jobList := []Job{
+		{JobId: 1},
+		{JobId: 2},
+		{JobId: 3},
+		{JobId: 4},
+		{JobId: 5},
+	}
 
-  }
+	wg.Add(2)
 
-  wg.Add(len(jobs))
+	go worker(1, jobs, &wg)
+	go worker(2, jobs, &wg)
 
-  for i, job := range jobs{
-	go worker( i+1 , job, &wg) 
-  }
+	for _, job := range jobList {
+		jobs <- job
+	}
 
-  wg.Wait()
+	close(jobs)
 
+	wg.Wait()
+
+	fmt.Println("All jobs completed")
 }
